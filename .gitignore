@@ -1,0 +1,16 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+.DS_Store
+*.log
+.qa/
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+release-artifacts/
+design/untab-dark.html
+design/assets/

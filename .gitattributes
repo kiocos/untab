@@ -1,0 +1,8 @@
+* text=auto
+*.pdf binary
+*.png binary
+*.ico binary
+*.icns binary
+*.mp4 binary
+*.wav binary
+THIRD_PARTY_LICENSES.txt linguist-generated=true
