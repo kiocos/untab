@@ -15,6 +15,7 @@ First open-source release. Earlier versions were local development builds.
 - Windows x64 installer with per-user installation, WebView2 setup and uninstaller
 - Linux x64 AppImage and Debian packages, plus a universal macOS disk image
 - Signed in-app updates for Windows, macOS and Linux AppImage
+- Automatic recovery backups before updates, retaining the last three successful copies
 - MIT license, installation/development guides and automated platform checks
 
 ### Compatibility

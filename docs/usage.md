@@ -26,6 +26,12 @@ Open a card to edit it, copy it or open it in your browser/default app. Deleting
 
 To move between operating systems, export on one computer and import on the other. Don't copy a live SQLite file; use an exported backup or quit the app before copying its entire data directory. Backups are unencrypted, so store them privately.
 
+Before an in-app update, Untab saves a complete `.untab` archive in `update-backups/` inside the library directory. It keeps the three most recent successful automatic backups. If the backup fails, the update is cancelled; check free space, permissions and attachment integrity before retrying. The same 20 GB archive limit applies. Manual installation does not trigger this backup, so export one first.
+
+To recover items, open **Opções → Importar backup** and select an archive from `update-backups/`. Import merges items and does not overwrite existing notes with older content. For a complete return to an earlier library, quit Untab, move the current library directory to a safe location, reopen the app and import the archive into the empty library. There is no automatic rollback of an installed version.
+
+These copies share your disk. Export a backup to another device or your own backup service to protect against disk failure, theft or accidental deletion of the entire library. Untab does not provide cloud recovery.
+
 ## Storage and privacy
 
 | OS | Library directory |
@@ -36,13 +42,17 @@ To move between operating systems, export on one computer and import on the othe
 
 The directory contains `untab.sqlite3` and `files/`. Cache is separate in the OS cache directory. Existing macOS installations keep the same application identifier and data paths.
 
+SQLite uses transactions, WAL journaling and full synchronous writes. Imported originals are copied into owned storage before their database records are saved. Portable backups validate attachment hashes and replace the destination only after a complete write. These measures reduce corruption risk; they cannot guarantee against every hardware, filesystem or software failure.
+
 There is no account, telemetry or cloud synchronization. Website preview requests disclose your IP and the requested URL to that website; update checks use GitHub. Previews use public HTML/Open Graph metadata without executing site JavaScript or using your browser cookies. Private-network URLs are stored but not fetched for previews. Offline saving and search work normally.
+
+The library is not encrypted by Untab. Anyone who can read your operating-system account's files can read it. Use OS account security and disk encryption when needed. Imported files are not executed by the app; opening one in an external application uses that application's security controls.
 
 ## Limits
 
 - 2 GB per local file; up to 100 files per import
 - 100,000 characters per plain-text note
-- 20 GB of attachments per imported backup
+- Backups: 20 GB of attachments, 25 MB of metadata, 50,000 items and 5,000 collections
 - Folders, shortcuts, executables, installers and scripts are rejected; this is not malware scanning
 - Archive attachments are stored without extracting or running their content
 - Filenames must be portable across supported systems

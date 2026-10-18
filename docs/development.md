@@ -30,6 +30,8 @@ npm run test:native
 
 This starts Vite if needed and opens a test app with a separate library under `.qa/`, checks the flows and exits. It also fetches a public Open Graph test page, so it needs internet access. On headless Linux use `xvfb-run -a npm run test:native`. The Cargo `smoke-test` feature must never be used in distribution builds.
 
+The Windows release job also installs a test-only 0.3.9 build, seeds a library, rejects altered packages and mismatched signed versions, restores a recovery archive, then installs the actual signed release through Tauri's updater. It checks restart, SQLite integrity, every saved item, collection, favorite and attachment hash. The loopback update server and `updater-smoke` feature are restricted to isolated CI testing and are excluded from distributed builds. This test exercises the native updater; Playwright separately covers confirmation and backup failure in the UI.
+
 ## Layout
 
 - `src/`: React UI, native command bridge and updater UI

@@ -51,7 +51,9 @@ sudo apt remove untab
 
 The app checks for a published release at startup. **Atualizações** checks again and shows an available version. Choose **Atualizar e reiniciar** to download, verify its signature, install and restart. It doesn't install updates without your confirmation. Windows shows installer progress; Linux self-updates require an AppImage in a writable location. Draft releases are never offered.
 
-Updates preserve your library. Backups are available in **Opções → Exportar backup**. [Library locations and backup details](usage.md#storage-and-privacy).
+Before downloading an update, Untab creates a complete recovery backup and cancels installation if that backup fails. The last three automatic copies stay in `update-backups/` inside the library directory. Installation replaces the app, keeping its data directory. Manual installation requires exporting your own backup first. [Recovery steps and backup limits](usage.md#backups).
+
+Downloads use HTTPS and require a valid signature from the updater key embedded in the application. The signed version must match the manifest version, preventing an older signed package from being advertised as a new one. This signature is separate from PGP commit signing and Apple/Windows publisher certificates. It does not prove that a signed release has no bugs, and it depends on the maintainer keeping the private signing key and build environment secure.
 
 Each release includes `SHA256SUMS.txt` and a PGP signature. Compare a downloaded file using `shasum -a 256 filename` on macOS, `sha256sum filename` on Linux, or `Get-FileHash filename -Algorithm SHA256` in PowerShell. To verify the checksum list's PGP signature, import the maintainer's public key from [GitHub](https://github.com/kiocos.gpg), check its fingerprint, then run `gpg --verify SHA256SUMS.txt.asc SHA256SUMS.txt`.
 
