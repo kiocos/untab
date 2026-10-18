@@ -46,7 +46,7 @@ SQLite uses transactions, WAL journaling and full synchronous writes. Imported o
 
 There is no account, telemetry or cloud synchronization. Website preview requests disclose your IP and the requested URL to that website; update checks use GitHub. Previews use public HTML/Open Graph metadata without executing site JavaScript or using your browser cookies. Private-network URLs are stored but not fetched for previews. Offline saving and search work normally.
 
-The library is not encrypted by Untab. Anyone who can read your operating-system account's files can read it. Use OS account security and disk encryption when needed. Imported files are not executed by the app; opening one in an external application uses that application's security controls.
+The library is not encrypted by Untab. On macOS/Linux, the library and preview directories are restricted to their owner; Windows uses the permissions inherited from your user profile. Software running as your user, or with administrator privileges, can still read these files. Use OS account security and disk encryption when needed. Imported files are not executed by the app; opening one in an external application uses that application's security controls.
 
 ## Limits
 

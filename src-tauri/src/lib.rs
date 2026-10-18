@@ -618,7 +618,15 @@ pub fn run() {
             let cache = app.path().app_cache_dir()?.join("previews");
             #[cfg(feature = "smoke-test")]
             let cache = data.join("previews");
+            std::fs::create_dir_all(&data)?;
             std::fs::create_dir_all(&cache)?;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                for directory in [&data, &cache] {
+                    std::fs::set_permissions(directory, std::fs::Permissions::from_mode(0o700))?;
+                }
+            }
             #[cfg(feature = "smoke-test")]
             app.asset_protocol_scope().allow_directory(&cache, true)?;
             let files = data.join("files");
