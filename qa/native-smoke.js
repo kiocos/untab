@@ -354,6 +354,12 @@
       collectionId: null,
     });
     assert(duplicate.items[0].duplicate, "file bytes deduplicated");
+    if (window.__untabSmokeClipboard) {
+      await invoke("copy_bookmark", { id: duplicate.items[0].id });
+      const pasted = await invoke("capture_clipboard", { collectionId: null, text: null });
+      assert(pasted.items.length === 1 && pasted.items[0].duplicate,
+        "native file clipboard round trip preserves file paths");
+    }
     const imageItem = fileItems.find((b) => b.kind === "image");
     const videoItem = fileItems.find((b) => b.kind === "video");
     const pdfItem = fileItems.find(

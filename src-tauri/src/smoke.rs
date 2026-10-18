@@ -65,8 +65,9 @@ pub fn fixtures_script() -> String {
     .map(|name| root.join(name).to_string_lossy().into_owned())
     .collect();
     format!(
-        "window.__untabSmokeFiles={};window.__untabSmokePlatform={};",
+        "window.__untabSmokeFiles={};window.__untabSmokePlatform={};window.__untabSmokeClipboard={};",
         serde_json::to_string(&paths).unwrap(),
-        serde_json::to_string(std::env::consts::OS).unwrap()
+        serde_json::to_string(std::env::consts::OS).unwrap(),
+        std::env::var("CI").is_ok_and(|value| value == "true")
     )
 }
