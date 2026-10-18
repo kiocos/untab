@@ -40,7 +40,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev libfuse2 gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev libfuse2 gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav xvfb
       - run: rustup toolchain install stable --profile minimal
       - name: Universal macOS targets
         if: runner.os == 'macOS'
@@ -66,6 +66,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./qa/windows-updater.ps1
+      - name: Verify packaged Linux launch
+        if: runner.os == 'Linux'
+        run: xvfb-run -a dbus-run-session -- bash qa/linux-package.sh
       - name: Record Linux runtime packages
         if: runner.os == 'Linux'
         run: dpkg-query -W > release-artifacts/linux-packages.txt
