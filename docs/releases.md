@@ -15,7 +15,7 @@ The updater key is separate from PGP and OS certificates. Losing it prevents tru
 
 1. Update `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and `src-tauri/tauri.conf.json` to the same version; update `CHANGELOG.md` and regenerate dependency notices with `node scripts/licenses.mjs`
 2. Run the checks, make focused PGP-signed commits (`git commit -S`), then create and push a signed tag (`git tag -s vX.Y.Z -m 'Untab X.Y.Z'`)
-3. Run **Build release** in Actions, selecting the signed tag as the ref; all builds must use that exact commit
+3. Run **Build release** in Actions, selecting the signed tag as the ref; branch builds can validate installers before tagging, but only reuse artifacts when their workflow commit exactly matches the final tag
 4. Download the three `release-*` workflow artifacts into a single directory
 5. Run `node scripts/prepare-release.mjs <directory>` to validate the artifacts and generate `latest.json` and `SHA256SUMS.txt`
 6. Sign the checksum list with `gpg --armor --detach-sign <directory>/SHA256SUMS.txt`
