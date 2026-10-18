@@ -24,7 +24,7 @@ Untab is a small desktop library built with **Rust, Tauri and React**. Everythin
 
 - **Paste to save** — `⌘V` on macOS, `Ctrl+V` on Windows and Linux. Links become bookmarks, text becomes notes, and copied files and images join your library.
 - **Your files stay yours** — images, PDFs, video, audio and other documents are copied into the library. Moving the original won't break them.
-- **Find things quickly** — a dark card grid, search, collections, favorites and filters by type.
+- **Find things quickly** — grid and list views, search, collections, favorites and filters by type.
 - **Useful previews** — website titles and covers, image previews and playback for compatible audio/video. Open saved files in their default app.
 - **A way back** — deletion confirmation, undo and portable `.untab` backups including attachments.
 - **Updates in the app** — signed updates for Windows, macOS and Linux AppImage, installed when you choose.

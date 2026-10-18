@@ -42,6 +42,19 @@
       }),
     );
   }
+  async function openDetails(selector = ".card-content") {
+    const item = document.querySelector(selector);
+    const rect = item.getBoundingClientRect();
+    item.dispatchEvent(new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: rect.left + 12,
+      clientY: rect.top + 12,
+    }));
+    await until(() => document.querySelector('[role="menu"]'), "item context menu opened");
+    [...document.querySelectorAll('[role="menuitem"]')]
+      .find((button) => button.textContent === "Editar detalhes").click();
+  }
   try {
     await until(
       () => document.querySelector(".card, .empty-state h2"),
@@ -114,7 +127,7 @@
       color: "#a999cd",
     });
     await pause(200);
-    document.querySelector(".card-content").click();
+    await openDetails();
     await until(
       () => document.querySelector("dialog[open] #bookmark-title"),
       "details dialog opened",
@@ -170,7 +183,7 @@
       () => document.querySelectorAll(".card").length === 1,
       "search clearing restores results",
     );
-    document.querySelector(".card-content").click();
+    await openDetails();
     await until(
       () => document.querySelector("dialog[open]"),
       "details reopened",
@@ -295,10 +308,10 @@
       "note created through native UI",
     );
     await until(
-      () => document.querySelector('[aria-label="Ver detalhes: Nota nativa"]'),
+      () => document.querySelector('[aria-label="Editar nota: Nota nativa"]'),
       "note card rendered",
     );
-    document.querySelector('[aria-label="Ver detalhes: Nota nativa"]').click();
+    document.querySelector('[aria-label="Editar nota: Nota nativa"]').click();
     await until(
       () => document.querySelector("#note-content"),
       "note editor opened",
@@ -377,7 +390,7 @@
       () => document.querySelector(`#bookmark-${imageItem.id} .card-content`),
       "file card rendered",
     );
-    document.querySelector(`#bookmark-${imageItem.id} .card-content`).click();
+    await openDetails(`#bookmark-${imageItem.id} .card-content`);
     await until(() => {
       const image = document.querySelector(".file-image");
       return image?.complete && image.naturalWidth === 120;
@@ -387,7 +400,7 @@
       "file details hide web actions",
     );
     document.querySelector('[aria-label="Fechar detalhes"]').click();
-    document.querySelector(`#bookmark-${videoItem.id} .card-content`).click();
+    await openDetails(`#bookmark-${videoItem.id} .card-content`);
     await until(
       () => document.querySelector("video")?.readyState >= 1 ||
         (window.__untabSmokePlatform === "linux" && document.querySelector(".media-fallback")),

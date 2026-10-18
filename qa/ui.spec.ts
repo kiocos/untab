@@ -187,7 +187,10 @@ async function mount(page: Page) {
           state.__savedFile = bookmark().attachment;
           return true;
         }
-        if (command === "reveal_file") return;
+        if (command === "reveal_file") {
+          state.__revealedFile = bookmark().attachment;
+          return;
+        }
 
         if (command === "set_favorite") {
           bookmark().favorite = args.favorite;
@@ -234,6 +237,7 @@ async function mount(page: Page) {
           return;
         }
         if (command === "open_bookmark") {
+          if (state.__openError) throw "Não foi possível abrir o item";
           state.__opened.push(bookmark().url);
           return;
         }
@@ -302,6 +306,11 @@ async function mount(page: Page) {
   });
   await page.goto("/");
   await expect(page.locator(".card")).toHaveCount(6);
+}
+
+async function openDetails(page: Page, title: string) {
+  await page.getByRole("button", { name: `Abrir: ${title}`, exact: true }).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Editar detalhes", exact: true }).click();
 }
 
 test("captures with Command V, deduplicates, and respects text fields", async ({
@@ -377,12 +386,7 @@ test("captures files and plain text, handles partial failures, and preserves fil
   await expect(page.getByRole("alert")).toContainText("Executáveis");
   await page.keyboard.press("Meta+v");
   await expect(page.locator(".card")).toHaveCount(9);
-  await page
-    .getByRole("button", {
-      name: "Ver detalhes: Foto de referência.png",
-      exact: true,
-    })
-    .click();
+  await openDetails(page, "Foto de referência.png");
   await expect(page.locator(".file-image")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Abrir arquivo", exact: true }),
@@ -435,6 +439,235 @@ test("searches, filters, and maintains collection views", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("switches views without resetting filters or order and remembers the choice", async ({ page }) => {
+  await mount(page);
+  const grid = page.getByRole("button", { name: "Visualização em grade", exact: true });
+  const list = page.getByRole("button", { name: "Visualização em lista", exact: true });
+  await expect(grid).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Design 3", exact: true }).click();
+  await page.getByRole("button", { name: "Artigos", exact: true }).click();
+  await page.getByRole("searchbox").fill("tipografia");
+  await list.click();
+  await expect(list).toHaveAttribute("aria-pressed", "true");
+  await expect(grid).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator(".bookmark-list .card")).toHaveCount(1);
+  await expect(page.locator(".card h2")).toHaveText("A personalidade da tipografia");
+  await grid.click();
+  await expect(page.locator(".grid .card")).toHaveCount(1);
+  await expect(page.getByRole("searchbox")).toHaveValue("tipografia");
+  await expect(page.getByRole("button", { name: "Artigos", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("searchbox").fill("");
+  await page.getByRole("button", { name: "Todos", exact: true }).click();
+  await page.getByTitle("Inverter ordem").click();
+  const orderedTitles = await page.locator(".card h2").allTextContents();
+  await list.click();
+  await expect(page.locator(".bookmark-list .card h2")).toHaveText(orderedTitles);
+  await expect(page.getByRole("heading", { name: "Design", exact: true })).toBeVisible();
+  await page.reload();
+  await expect(list).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".bookmark-list .card")).toHaveCount(6);
+  await page.screenshot({ path: ".qa/untab-list.png" });
+  await grid.click();
+  await page.reload();
+  await expect(grid).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".grid .card")).toHaveCount(6);
+});
+
+test("list rows support keyboard actions, notes, attachments and small windows", async ({ page }) => {
+  await mount(page);
+  await page.getByRole("button", { name: "Visualização em lista", exact: true }).click();
+  const linear = page.locator("#bookmark-linear");
+  await linear.getByRole("button", { name: "Abrir:", exact: false }).focus();
+  await page.keyboard.press("Enter");
+  await expect.poll(() => page.evaluate(() => (window as any).__opened)).toEqual(["https://linear.app/"]);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.keyboard.press("Shift+F10");
+  await expect(page.getByRole("menuitem", { name: "Abrir no navegador" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog", { name: "Detalhes do bookmark" })).toBeVisible();
+  await page.getByRole("button", { name: "Fechar detalhes" }).click();
+  await linear.locator(".bookmark-star").focus();
+  await page.keyboard.press("Space");
+  await expect(linear.locator(".bookmark-star")).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("Tab");
+  await expect(linear.locator(".bookmark-delete")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Excluir", exact: true }).click();
+  await expect(linear).toHaveCount(0);
+  await page.getByRole("button", { name: "Desfazer", exact: true }).click();
+  await expect(linear).toBeVisible();
+  await page.evaluate(() => {
+    (window as any).__testClipboard = "Uma nota com título longo ".repeat(12);
+  });
+  await page.getByRole("button", { name: "Colar", exact: false }).click();
+  await page.evaluate(() => {
+    (window as any).__testFiles = [{
+      name: "Documento de referência.pdf",
+      path: "/qa/fixtures/document.pdf",
+      mime: "application/pdf",
+      kind: "document",
+      size: 51200,
+      sha256: "list-pdf",
+    }];
+  });
+  await page.getByRole("button", { name: "Adicionar arquivos", exact: true }).click();
+  await expect(page.locator(".bookmark-list .card")).toHaveCount(8);
+  await expect(page.locator(".bookmark-list .note-cover")).toBeVisible();
+  await expect(page.locator(".bookmark-list .card").filter({ hasText: "Documento de referência.pdf" })).toContainText("50.0 KB");
+  await page.setViewportSize({ width: 760, height: 560 });
+  expect(await page.locator(".surface").evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  const rows = await page.locator(".bookmark-list .card").evaluateAll((elements) => elements.map((element) => {
+    const rect = element.getBoundingClientRect();
+    return { x: rect.x, width: rect.width, height: rect.height };
+  }));
+  expect(rows.every((row) => row.x === rows[0].x && row.width === rows[0].width && row.height < 100)).toBe(true);
+  await page.screenshot({ path: ".qa/untab-list-minimum-window.png" });
+  await page.getByRole("searchbox").fill("sem resultado");
+  await expect(page.getByRole("heading", { name: "Nenhum item encontrado" })).toBeVisible();
+  await page.getByRole("button", { name: "Limpar filtros", exact: true }).click();
+  await expect(page.locator(".bookmark-list .card")).toHaveCount(8);
+});
+
+test("view switching remains usable when preference storage is blocked", async ({ page }) => {
+  await page.addInitScript(() => {
+    Storage.prototype.getItem = () => { throw new Error("Storage blocked"); };
+    Storage.prototype.setItem = () => { throw new Error("Storage blocked"); };
+  });
+  await mount(page);
+  await page.getByRole("button", { name: "Visualização em lista", exact: true }).click();
+  await expect(page.locator(".bookmark-list .card")).toHaveCount(6);
+  await page.getByRole("button", { name: "Visualização em grade", exact: true }).click();
+  await expect(page.locator(".grid .card")).toHaveCount(6);
+});
+
+for (const view of ["grade", "lista"]) {
+  test(`opens links directly and exposes contextual actions in ${view}`, async ({ page }) => {
+    await mount(page);
+    await page.getByRole("button", { name: `Visualização em ${view}`, exact: true }).click();
+    const item = page.getByRole("button", { name: "Abrir: Linear — referência de produto", exact: true });
+    await item.click();
+    await expect.poll(() => page.evaluate(() => (window as any).__opened)).toEqual(["https://linear.app/"]);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await item.click({ button: "right" });
+    await expect(page.getByRole("menu")).toBeVisible();
+    await expect(page.getByRole("menuitem")).toHaveText([
+      "Abrir no navegador", "Editar detalhes", "Copiar link",
+      "Remover dos favoritos", "Atualizar prévia", "Excluir",
+    ]);
+    expect(await page.evaluate(() => (window as any).__opened.length)).toBe(1);
+    await page.getByRole("menuitem", { name: "Copiar link", exact: true }).click();
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => (window as any).__testClipboard)).toBe("https://linear.app/");
+    await item.click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Remover dos favoritos", exact: true }).click();
+    await expect(page.locator("#bookmark-linear .bookmark-star")).toHaveAttribute("aria-pressed", "false");
+    await item.click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Atualizar prévia", exact: true }).click();
+    await item.click({ button: "right" });
+    await expect(page.getByRole("menuitem", { name: "Atualizar prévia", exact: true })).toBeDisabled();
+    await page.keyboard.press("End");
+    await expect(page.getByRole("menuitem", { name: "Excluir", exact: true })).toBeFocused();
+    await page.keyboard.press("ArrowUp");
+    await expect(page.getByRole("menuitem", { name: "Favoritar", exact: true })).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(page.getByRole("menuitem", { name: "Abrir no navegador" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(item).toBeFocused();
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await page.keyboard.press("Shift+F10");
+    await page.getByRole("menuitem", { name: "Excluir", exact: true }).click();
+    await expect(page.getByRole("alertdialog")).toBeVisible();
+    await page.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await expect(item).toBeVisible();
+    await item.click({ button: "right" });
+    await page.getByRole("searchbox").click();
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await page.evaluate(() => { (window as any).__openError = true; });
+    await item.click();
+    await expect(page.getByRole("alert")).toContainText("Não foi possível abrir o item");
+  });
+}
+
+test("file context menus reveal, save, copy and delete the saved file", async ({ page }) => {
+  await mount(page);
+  await page.getByRole("button", { name: "Visualização em lista", exact: true }).click();
+  await page.evaluate(() => {
+    (window as any).__testFiles = [{
+      name: "Manual.pdf", path: "/qa/fixtures/document.pdf", mime: "application/pdf",
+      kind: "document", size: 51200, sha256: "context-pdf",
+    }];
+  });
+  await page.getByRole("button", { name: "Adicionar arquivos", exact: true }).click();
+  const item = page.getByRole("button", { name: "Abrir: Manual.pdf", exact: true });
+  await item.click();
+  await expect.poll(() => page.evaluate(() => (window as any).__opened)).toEqual(["untab:file/context-pdf"]);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await item.click({ button: "right" });
+  await expect(page.getByRole("menuitem")).toHaveText([
+    "Abrir arquivo", "Editar detalhes", "Copiar arquivo", "Salvar como…",
+    "Abrir local do arquivo", "Favoritar", "Excluir",
+  ]);
+  await page.screenshot({ path: ".qa/untab-file-context-menu.png" });
+  await page.getByRole("menuitem", { name: "Abrir local do arquivo", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__revealedFile?.path)).toBe("/qa/fixtures/document.pdf");
+  await item.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Salvar como…", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__savedFile?.name)).toBe("Manual.pdf");
+  await item.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Copiar arquivo", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__testClipboard?.sha256)).toBe("context-pdf");
+  await item.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Excluir", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Excluir", exact: true }).click();
+  await expect(item).toHaveCount(0);
+  await page.getByRole("button", { name: "Desfazer", exact: true }).click();
+  await expect(item).toBeVisible();
+});
+
+test("note menus keep editing and copying available without file or web actions", async ({ page }) => {
+  await mount(page);
+  await page.evaluate(() => { (window as any).__testClipboard = "Minha nota contextual"; });
+  await page.getByRole("button", { name: "Colar", exact: false }).click();
+  const item = page.getByRole("button", { name: "Editar nota: Minha nota contextual", exact: true });
+  await item.click({ button: "right" });
+  await expect(page.getByRole("menuitem")).toHaveText(["Editar nota", "Copiar texto", "Favoritar", "Excluir"]);
+  await page.getByRole("menuitem", { name: "Copiar texto", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Texto copiado");
+  await item.click();
+  await expect(page.getByRole("dialog", { name: "Editar nota", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__opened)).toEqual([]);
+});
+
+test("context menus fit the viewport and dismiss on scrolling or switching items", async ({ page }) => {
+  await mount(page);
+  await page.setViewportSize({ width: 760, height: 560 });
+  const item = page.getByRole("button", { name: "Abrir: Linear — referência de produto", exact: true });
+  await item.evaluate((button) => button.dispatchEvent(new MouseEvent("contextmenu", {
+    bubbles: true, cancelable: true, clientX: 755, clientY: 555,
+  })));
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  const bounds = (await menu.boundingBox())!;
+  expect(bounds.x).toBeGreaterThanOrEqual(8);
+  expect(bounds.y).toBeGreaterThanOrEqual(8);
+  expect(bounds.x + bounds.width).toBeCloseTo(752);
+  expect(bounds.y + bounds.height).toBeCloseTo(552);
+  await page.screenshot({ path: ".qa/untab-context-menu-minimum-window.png" });
+  await page.keyboard.press("Tab");
+  await expect(menu).toHaveCount(0);
+  await expect(item).toBeFocused();
+  await item.click({ button: "right" });
+  await page.locator(".surface").evaluate((surface) => { surface.scrollTop = 100; });
+  await expect(menu).toHaveCount(0);
+  await item.click({ button: "right" });
+  await page.getByRole("button", { name: "Abrir: Espaços que convidam a criar", exact: true }).click({ button: "right" });
+  await expect(menu).toHaveCount(1);
+  await expect(menu).toHaveAccessibleName("Ações: Espaços que convidam a criar");
+  await page.keyboard.press("Escape");
+  expect(await page.evaluate(() => (window as any).__opened)).toEqual([]);
+});
+
 test("requires confirmation from cards and preserves edits when cancelling", async ({
   page,
 }) => {
@@ -462,12 +695,7 @@ test("requires confirmation from cards and preserves edits when cancelling", asy
   await page.mouse.click(5, 5);
   await expect(confirmation).toHaveCount(0);
   await expect(page.locator(".card")).toHaveCount(6);
-  await page
-    .getByRole("button", {
-      name: "Ver detalhes: Linear — referência de produto",
-      exact: true,
-    })
-    .click();
+  await openDetails(page, "Linear — referência de produto");
   await page
     .getByLabel("Título", { exact: true })
     .fill("Rascunho ainda não salvo");
@@ -491,12 +719,7 @@ test("edits, opens, deletes and restores through the detail panel", async ({
   page,
 }) => {
   await mount(page);
-  await page
-    .getByRole("button", {
-      name: "Ver detalhes: Linear — referência de produto",
-      exact: true,
-    })
-    .click();
+  await openDetails(page, "Linear — referência de produto");
   await page.getByLabel("Título", { exact: true }).fill("Minha referência");
   await page.getByLabel("Coleção", { exact: true }).selectOption("reading");
   await page.getByRole("button", { name: "Salvar alterações" }).click();
@@ -575,7 +798,7 @@ test("creates, searches, edits, copies and restores plain text notes", async ({
   await expect(page.locator(".card .note-cover")).toHaveCount(1);
   await page
     .getByRole("button", {
-      name: "Ver detalhes: Ideias para o projeto",
+      name: "Editar nota: Ideias para o projeto",
       exact: true,
     })
     .click();

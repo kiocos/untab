@@ -16,9 +16,11 @@ You can also drag files onto the window or use the paperclip button. Paste insid
 | Add link | ⌘N | Ctrl+N |
 | New note | ⌘⇧N | Ctrl+Shift+N |
 
-Use collections, favorites and type filters to organize the grid. New items go into the selected collection. Search matches titles, URLs and note contents, ignoring accents.
+Use the grid/list buttons beside the sort control to choose a view. Untab remembers your choice when you reopen the app. Collections, favorites, type filters and search work in both views. New items go into the selected collection. Search matches titles, URLs and note contents, ignoring accents.
 
-Open a card to edit it, copy it or open it in your browser/default app. Deleting from the detail panel or the card's hover-only trash button asks for confirmation. **Desfazer** restores the item for ten seconds. Deletion is soft: attachment files remain on disk; there's no automatic purge in this version.
+Left-click a card or list row to open a link in your browser, a file in its default app, or a note in the editor. Right-click an item (or press **Shift+F10** while it is focused) for its context menu: edit details, copy, favorite, refresh a web preview or delete. File menus also include **Salvar como…** and **Abrir local do arquivo**, which reveals the saved copy in your file manager. Use **Editar detalhes** to change the title or collection and view previews.
+
+Deleting from the menu, detail panel or an item's trash button asks for confirmation. **Desfazer** restores the item for ten seconds. Deletion is soft: attachment files remain on disk; there's no automatic purge in this version.
 
 ## Backups
 

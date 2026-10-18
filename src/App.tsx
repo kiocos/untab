@@ -15,6 +15,7 @@ import { listen } from "@tauri-apps/api/event";
 import {
   Bookmark as BookmarkIcon,
   LayoutGrid,
+  List,
   Star,
   Search,
   Plus,
@@ -45,6 +46,11 @@ import {
   Paperclip,
 } from "lucide-react";
 import { api } from "./api";
+import {
+  ContextMenu,
+  type ContextMenuAction,
+  type ContextMenuAnchor,
+} from "./ContextMenu";
 import { Updates } from "./Updates";
 import { isMac, shortcut } from "./platform";
 import {
@@ -58,6 +64,8 @@ import {
 } from "./types";
 
 type View = "all" | "favorites" | string;
+type ViewMode = "grid" | "list";
+const viewModeKey = "untab:view-mode";
 type Dialog =
   | { type: "bookmark"; id: string }
   | { type: "collection"; collection?: Collection }
@@ -579,7 +587,7 @@ function BookmarkDetails({
               onClick={() => void action(() => api.revealFile(bookmark.id))}
             >
               <FolderOpen />
-              {isMac ? "Mostrar no Finder" : "Mostrar na pasta"}
+              Abrir local do arquivo
             </button>
           </>
         )}
@@ -882,6 +890,13 @@ function NoteDialog({
 export function App() {
   const [library, setLibrary] = useState<Library>(blank);
   const [view, setView] = useState<View>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try {
+      return localStorage.getItem(viewModeKey) === "list" ? "list" : "grid";
+    } catch {
+      return "grid";
+    }
+  });
   const [kind, setKind] = useState<Kind | "all">("all");
   const [query, setQuery] = useState("");
   const [newest, setNewest] = useState(true);
@@ -891,6 +906,9 @@ export function App() {
   const [pendingDelete, setPendingDelete] = useState<Bookmark | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const [menu, setMenu] = useState(false);
+  const [itemMenu, setItemMenu] = useState<
+    (ContextMenuAnchor & { id: string }) | null
+  >(null);
   const [pasting, setPasting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [highlight, setHighlight] = useState<string | null>(null);
@@ -899,6 +917,15 @@ export function App() {
   const request = useRef(0);
   const busyPaste = useRef(false);
   const toastId = useRef(0);
+  const closeItemMenu = useCallback(() => setItemMenu(null), []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(viewModeKey, viewMode);
+    } catch {
+      // Keep the selected view usable when storage is unavailable
+    }
+  }, [viewMode]);
 
   const notify = useCallback(
     (text: string, error = false, action?: Toast["action"]) => {
@@ -1006,6 +1033,12 @@ export function App() {
         newest ? b.createdAt - a.createdAt : a.createdAt - b.createdAt,
       );
   }, [library.bookmarks, view, kind, query, newest, collectionsById]);
+
+  useEffect(() => {
+    if (itemMenu && !filtered.some((bookmark) => bookmark.id === itemMenu.id)) {
+      setItemMenu(null);
+    }
+  }, [filtered, itemMenu]);
 
   const add = useCallback(
     async (text: string) => {
@@ -1172,6 +1205,94 @@ export function App() {
       notify(errorText(error), true);
     }
   }
+  async function itemAction(operation: () => Promise<unknown>, success?: string) {
+    try {
+      await operation();
+      await reload();
+      if (success) notify(success);
+    } catch (error) {
+      notify(errorText(error), true);
+    }
+  }
+  function openItem(bookmark: Bookmark) {
+    setItemMenu(null);
+    if (bookmark.kind === "note")
+      setDialog({ type: "bookmark", id: bookmark.id });
+    else void itemAction(() => api.open(bookmark.id));
+  }
+  function showItemMenu(
+    bookmark: Bookmark,
+    card: HTMLElement,
+    x: number,
+    y: number,
+  ) {
+    const trigger = card.querySelector<HTMLButtonElement>(".card-content")!;
+    setMenu(false);
+    setItemMenu({ id: bookmark.id, x, y, trigger });
+  }
+  function itemMenuActions(bookmark: Bookmark): ContextMenuAction[] {
+    const isNote = bookmark.kind === "note";
+    const file = bookmark.attachment;
+    const actions: ContextMenuAction[] = [
+      {
+        label: isNote ? "Editar nota" : file ? "Abrir arquivo" : "Abrir no navegador",
+        icon: isNote ? <Pencil /> : <ExternalLink />,
+        run: () => openItem(bookmark),
+      },
+    ];
+    if (!isNote)
+      actions.push({
+        label: "Editar detalhes",
+        icon: <Pencil />,
+        run: () => setDialog({ type: "bookmark", id: bookmark.id }),
+      });
+    actions.push({
+      label: isNote ? "Copiar texto" : file ? "Copiar arquivo" : "Copiar link",
+      icon: <Copy />,
+      run: () =>
+        void itemAction(
+          () => api.copy(bookmark.id),
+          isNote ? "Texto copiado" : file ? "Arquivo copiado" : "Link copiado",
+        ),
+    });
+    if (file)
+      actions.push(
+        {
+          label: "Salvar como…",
+          icon: <Download />,
+          run: () =>
+            void itemAction(async () => {
+              if (await api.saveFile(bookmark.id)) notify("Arquivo salvo");
+            }),
+        },
+        {
+          label: "Abrir local do arquivo",
+          icon: <FolderOpen />,
+          run: () => void itemAction(() => api.revealFile(bookmark.id)),
+        },
+      );
+    actions.push({
+      label: bookmark.favorite ? "Remover dos favoritos" : "Favoritar",
+      icon: <Star className={bookmark.favorite ? "filled-star" : ""} />,
+      run: () => void toggleFavorite(bookmark),
+      separator: true,
+    });
+    if (!isNote && !file)
+      actions.push({
+        label: "Atualizar prévia",
+        icon: <RefreshCw />,
+        disabled: bookmark.previewStatus === "pending",
+        run: () => void itemAction(() => api.refresh(bookmark.id)),
+      });
+    actions.push({
+      label: "Excluir",
+      icon: <Trash2 />,
+      run: () => setPendingDelete(bookmark),
+      danger: true,
+      separator: true,
+    });
+    return actions;
+  }
   async function remove(bookmark: Bookmark) {
     try {
       await api.remove(bookmark.id);
@@ -1239,6 +1360,9 @@ export function App() {
     dialog?.type === "bookmark"
       ? library.bookmarks.find((bookmark) => bookmark.id === dialog.id)
       : undefined;
+  const contextBookmark = itemMenu
+    ? filtered.find((bookmark) => bookmark.id === itemMenu.id)
+    : undefined;
 
   return (
     <NoticeContext.Provider value={{ toast, dismiss: () => setToast(null) }}>
@@ -1479,14 +1603,38 @@ export function App() {
                   </button>
                 ))}
               </div>
-              <button
-                className="sort"
-                title="Inverter ordem"
-                onClick={() => setNewest(!newest)}
-              >
-                <ArrowDownUp />
-                <span>{newest ? "Mais recentes" : "Mais antigos"}</span>
-              </button>
+              <div className="view-controls">
+                <button
+                  className="sort"
+                  title="Inverter ordem"
+                  onClick={() => setNewest(!newest)}
+                >
+                  <ArrowDownUp />
+                  <span>{newest ? "Mais recentes" : "Mais antigos"}</span>
+                </button>
+                <div
+                  className="view-toggle"
+                  role="group"
+                  aria-label="Visualização"
+                >
+                  <button
+                    title="Visualização em grade"
+                    aria-label="Visualização em grade"
+                    aria-pressed={viewMode === "grid"}
+                    onClick={() => setViewMode("grid")}
+                  >
+                    <LayoutGrid aria-hidden="true" />
+                  </button>
+                  <button
+                    title="Visualização em lista"
+                    aria-label="Visualização em lista"
+                    aria-pressed={viewMode === "list"}
+                    onClick={() => setViewMode("list")}
+                  >
+                    <List aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="surface">
               {loading ? (
@@ -1550,7 +1698,7 @@ export function App() {
                   )}
                 </div>
               ) : (
-                <div className="grid">
+                <div className={viewMode === "list" ? "bookmark-list" : "grid"}>
                   {filtered.map((bookmark) => {
                     const collection = collectionsById.get(
                       bookmark.collectionId ?? "",
@@ -1560,13 +1708,36 @@ export function App() {
                         id={`bookmark-${bookmark.id}`}
                         key={bookmark.id}
                         className={`card ${highlight === bookmark.id ? "highlight" : ""}`}
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          showItemMenu(
+                            bookmark,
+                            event.currentTarget,
+                            event.clientX || rect.left + 12,
+                            event.clientY || rect.top + 12,
+                          );
+                        }}
+                        onKeyDown={(event) => {
+                          if (
+                            event.key === "ContextMenu" ||
+                            (event.shiftKey && event.key === "F10")
+                          ) {
+                            event.preventDefault();
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            showItemMenu(
+                              bookmark,
+                              event.currentTarget,
+                              rect.left + 12,
+                              rect.top + 12,
+                            );
+                          }
+                        }}
                       >
                         <button
                           className="card-content"
-                          aria-label={`Ver detalhes: ${bookmark.title}`}
-                          onClick={() =>
-                            setDialog({ type: "bookmark", id: bookmark.id })
-                          }
+                          aria-label={`${bookmark.kind === "note" ? "Editar nota" : "Abrir"}: ${bookmark.title}`}
+                          onClick={() => openItem(bookmark)}
                         >
                           <Cover bookmark={bookmark} />
                           <div className="card-body">
@@ -1641,6 +1812,14 @@ export function App() {
             </div>
           </main>
         </div>
+        {itemMenu && contextBookmark && !dialog && !pendingDelete && (
+          <ContextMenu
+            anchor={itemMenu}
+            label={`Ações: ${contextBookmark.title}`}
+            actions={itemMenuActions(contextBookmark)}
+            close={closeItemMenu}
+          />
+        )}
         {selected && (
           <BookmarkDetails
             key={selected.id}
