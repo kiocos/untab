@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0 — 2026-10-18
+
+### Added
+
+- Compact list view alongside the grid, with the selected view remembered between sessions
+- Right-click context menus in both views for opening, editing, copying, favoriting and deleting items
+- File menu actions to save a copy and open the saved file's location in the file manager
+- Keyboard access to context menus with Shift+F10, arrow-key navigation and Escape to dismiss
+
+### Changed
+
+- Left-clicking an item now opens links in the browser, files in their default app and notes in the editor
+- Item details and collection editing are available through the context menu
+- Search, filters, ordering, deletion confirmation and undo work in both grid and list views
+
 ## 0.4.0 — 2026-10-18
 
 First open-source release. Earlier versions were local development builds.
