@@ -417,6 +417,12 @@
         checks,
         error: String(error),
         stack: error.stack,
+        media: (() => {
+          const video = document.querySelector("video");
+          return video ? { readyState: video.readyState, networkState: video.networkState,
+            error: video.error?.message, h264: video.canPlayType('video/mp4; codecs="avc1.42E01E"') }
+            : { fallback: document.querySelector(".media-fallback")?.textContent };
+        })(),
       },
     });
   }

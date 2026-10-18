@@ -5,6 +5,6 @@ assert.equal(process.argv[2] ?? `v${version}`, `v${version}`, "Tag must match th
 for (const file of ["package-lock.json", "src-tauri/tauri.conf.json"]) {
   assert.equal(JSON.parse(readFileSync(file)).version, version, `${file} version`);
 }
-assert.match(readFileSync("src-tauri/Cargo.toml", "utf8"), new RegExp(`^version = "${version.replaceAll(".", "\\.")}"$`, "m"));
-assert.match(readFileSync("src-tauri/Cargo.lock", "utf8"), new RegExp(`name = "untab"\nversion = "${version.replaceAll(".", "\\.")}"`));
+assert.match(readFileSync("src-tauri/Cargo.toml", "utf8").replaceAll("\r\n", "\n"), new RegExp(`^version = "${version.replaceAll(".", "\\.")}"$`, "m"));
+assert.match(readFileSync("src-tauri/Cargo.lock", "utf8").replaceAll("\r\n", "\n"), new RegExp(`name = "untab"\nversion = "${version.replaceAll(".", "\\.")}"`));
 console.log(`All package versions match ${version}`);

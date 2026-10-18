@@ -57,11 +57,10 @@ pub fn paths(_app: &tauri::AppHandle) -> Vec<PathBuf> {
 
 #[cfg(windows)]
 pub fn copy_file(_app: &tauri::AppHandle, path: &Path) -> AppResult<()> {
-    clipboard_win::set_clipboard(
-        clipboard_win::formats::FileList,
-        &[path.to_string_lossy().as_ref()][..],
-    )
-    .map_err(|error| error.to_string())
+    let _clipboard =
+        clipboard_win::Clipboard::new_attempts(10).map_err(|error| error.to_string())?;
+    clipboard_win::raw::set_file_list(&[path.to_string_lossy().as_ref()])
+        .map_err(|error| error.to_string())
 }
 
 #[cfg(not(target_os = "macos"))]
