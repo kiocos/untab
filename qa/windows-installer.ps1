@@ -15,10 +15,16 @@ function Install-Untab {
   if (!(Test-Path $sentinel)) { throw "Installer removed user data" }
 }
 Install-Untab
-$app = Start-Process -FilePath "$installDir/untab.exe" -PassThru
-Start-Sleep -Seconds 8
+$diagnostics = New-Item -ItemType Directory -Force ".qa/updater"
+$app = Start-Process -FilePath "$installDir/untab.exe" -PassThru -RedirectStandardError "$diagnostics/installed-stderr.log"
+$deadline = (Get-Date).AddSeconds(45)
+while (!(Test-Path "$dataDir/untab.sqlite3") -and !$app.HasExited -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
 if ($app.HasExited) { throw "Installed application did not stay running" }
-if (!(Test-Path "$dataDir/untab.sqlite3")) { throw "Installed app did not open its library" }
+if (!(Test-Path "$dataDir/untab.sqlite3")) {
+  Get-Process untab | Select-Object Id, MainWindowTitle, Path | ConvertTo-Json | Set-Content "$diagnostics/process.json"
+  Get-Content "$diagnostics/installed-stderr.log"
+  throw "Installed app did not open its library"
+}
 $app.CloseMainWindow() | Out-Null
 if (!$app.WaitForExit(10000)) { throw "App did not close normally" }
 Install-Untab
