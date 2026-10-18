@@ -164,8 +164,10 @@ impl Database {
         let mut conn = Connection::open(path).map_err(error)?;
         conn.busy_timeout(std::time::Duration::from_secs(5))
             .map_err(error)?;
-        conn.execute_batch("PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;")
-            .map_err(error)?;
+        conn.execute_batch(
+            "PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;",
+        )
+        .map_err(error)?;
         let version: u32 = conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .map_err(error)?;

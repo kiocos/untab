@@ -251,7 +251,17 @@ pub fn store_reader(root: &Path, name: &str, mut reader: impl Read) -> AppResult
     fs::create_dir_all(&directory).map_err(error)?;
     let destination = directory.join(name);
     if !destination.exists() {
+        temp.as_file().sync_all().map_err(error)?;
         temp.persist_noclobber(&destination).map_err(error)?;
+        #[cfg(unix)]
+        {
+            File::open(&directory)
+                .and_then(|dir| dir.sync_all())
+                .map_err(error)?;
+            File::open(root)
+                .and_then(|dir| dir.sync_all())
+                .map_err(error)?;
+        }
     }
     let mime = match extension(name).as_str() {
         "pdf" => "application/pdf",

@@ -13,6 +13,7 @@ export function Updates() {
   const [message, setMessage] = useState("");
   const [version, setVersion] = useState("");
   const [progress, setProgress] = useState<number | undefined>();
+  const [backingUp, setBackingUp] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const update = useRef<Update | null>(null);
   const busy = useRef(false);
@@ -55,6 +56,16 @@ export function Updates() {
     let total = 0;
     let installed = false;
     try {
+      setBackingUp(true);
+      try {
+        await invoke("prepare_update");
+      } catch {
+        setMessage("Não foi possível criar o backup. A atualização foi cancelada. Confira o espaço livre e as permissões da pasta da biblioteca.");
+        setPhase("error");
+        return;
+      } finally {
+        setBackingUp(false);
+      }
       await update.current.downloadAndInstall((event) => {
         if (event.event === "Started") total = event.data.contentLength ?? 0;
         if (event.event === "Progress") {
@@ -101,12 +112,12 @@ export function Updates() {
         {phase === "current" && <p>Você está na versão mais recente.</p>}
         {phase === "available" && <>
           <p>A versão {version} está disponível.</p>
-          <p>O Untab será reiniciado. Sua biblioteca será mantida.</p>
+          <p>Um backup da biblioteca será criado antes de atualizar e reiniciar.</p>
           {update.current?.body && <pre className="update-notes">{update.current.body}</pre>}
         </>}
         {(phase === "error" || phase === "restart") && <p>{message}</p>}
         {phase === "installing" && <>
-          <p>{progress === 100 ? "Instalando…" : "Baixando atualização…"}</p>
+          <p>{backingUp ? "Salvando backup da biblioteca…" : progress === 100 ? "Instalando…" : "Baixando atualização…"}</p>
           <progress max={100} value={progress} aria-label="Progresso da atualização" />
         </>}
       </div>

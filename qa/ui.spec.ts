@@ -110,11 +110,17 @@ async function mount(page: Page) {
         if (command === "plugin:event|listen") return ++callback;
         if (command === "plugin:event|unlisten") return;
         if (command === "runtime_info") return { version: "0.4.0", updaterSupported: state.__updaterSupported ?? true };
+        if (command === "prepare_update") {
+          if (state.__backupError) throw "Disk full";
+          state.__backupCreated = true;
+          return "update-backups/pre-update-test.untab";
+        }
         if (command === "plugin:updater|check") {
           if (state.__updateError) throw "Network unavailable";
           return state.__update ?? null;
         }
         if (command === "plugin:updater|download_and_install") {
+          if (!state.__backupCreated) throw "Backup must finish before installation";
           state.__updateInstalls = (state.__updateInstalls ?? 0) + 1;
           if (state.__installError) throw "Invalid signature";
           return;
@@ -628,6 +634,12 @@ test("updates require confirmation and failed installs keep the library", async 
   await dialog.getByRole("button", { name: "Fechar", exact: true }).click();
   expect(await page.evaluate(() => (window as any).__updateInstalls ?? 0)).toBe(0);
   await page.getByRole("button", { name: "Atualizar para 0.5.0" }).click();
+  await page.evaluate(() => { (window as any).__backupError = true; });
+  await dialog.getByRole("button", { name: "Atualizar e reiniciar" }).click();
+  await expect(dialog.getByText(/Não foi possível criar o backup/)).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__updateInstalls ?? 0)).toBe(0);
+  await page.evaluate(() => { (window as any).__backupError = false; });
+  await dialog.getByRole("button", { name: "Tentar novamente" }).click();
   await page.evaluate(() => { (window as any).__installError = true; });
   await dialog.getByRole("button", { name: "Atualizar e reiniciar" }).click();
   await expect(dialog.getByText(/Não foi possível concluir/)).toBeVisible();

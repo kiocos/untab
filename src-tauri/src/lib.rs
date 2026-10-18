@@ -5,6 +5,8 @@ mod files;
 mod metadata;
 #[cfg(feature = "smoke-test")]
 mod smoke;
+#[cfg(all(windows, feature = "updater-smoke"))]
+mod updater_smoke;
 
 use db::{Added, AppResult, Database, Library};
 use std::{
@@ -575,6 +577,23 @@ fn runtime_info(app: tauri::AppHandle) -> RuntimeInfo {
     }
 }
 
+#[tauri::command]
+async fn prepare_update(app: tauri::AppHandle) -> AppResult<String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let _guard = state.file_import.lock().map_err(|e| e.to_string())?;
+        let directory = state
+            .files
+            .parent()
+            .ok_or("Pasta da biblioteca inválida")?
+            .join("update-backups");
+        archive::before_update(&state.db, &state.files, &directory)
+            .map(|path| path.to_string_lossy().into_owned())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
@@ -618,10 +637,13 @@ pub fn run() {
             enrich_pending(app.handle());
             #[cfg(feature = "smoke-test")]
             smoke::setup(app);
+            #[cfg(all(windows, feature = "updater-smoke"))]
+            updater_smoke::setup(app);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             runtime_info,
+            prepare_update,
             get_library,
             add_bookmark,
             create_note,
