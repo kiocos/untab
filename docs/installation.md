@@ -20,7 +20,7 @@ Uninstall using **Settings → Apps → Installed apps → Untab → Uninstall**
 
 ## Linux
 
-Packages target x64 Linux with glibc 2.35 or newer, such as Ubuntu 22.04+. Other distributions need compatible GTK 3 and WebKitGTK 4.1 libraries. Wayland/X11 behavior can vary by desktop; file picker and drag and drop are alternatives if your file manager doesn't advertise clipboard URI lists.
+Packages target x64 Linux with glibc 2.35 or newer, such as Ubuntu 22.04+. Other distributions need compatible GTK 3 and WebKitGTK 4.1 libraries. Local audio/video may need your system player because of a WebKitGTK limitation. Wayland/X11 behavior can vary by desktop; file picker and drag and drop are alternatives if your file manager doesn't advertise clipboard URI lists.
 
 ### AppImage
 

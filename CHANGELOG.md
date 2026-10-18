@@ -30,3 +30,5 @@ First open-source release. Earlier versions were local development builds.
 - Playback depends on system codecs; unsupported formats open in an external app
 - macOS packages are ad-hoc signed, without notarization; Windows has no Authenticode certificate
 - Draft releases are not offered by the updater until published
+
+Linux WebKitGTK has an [upstream limitation with local media URLs](https://github.com/tauri-apps/tauri/issues/3725). When playback fails, **Abrir arquivo** opens the saved original in your system player. Saving, organizing and exporting those files still work.

@@ -389,13 +389,18 @@
     document.querySelector('[aria-label="Fechar detalhes"]').click();
     document.querySelector(`#bookmark-${videoItem.id} .card-content`).click();
     await until(
-      () => document.querySelector("video")?.readyState >= 1,
-      "local video metadata loads in WebView",
+      () => document.querySelector("video")?.readyState >= 1 ||
+        (window.__untabSmokePlatform === "linux" && document.querySelector(".media-fallback")),
+      "video preview or Linux external-player fallback available",
     );
-    assert(
-      document.querySelector("video").duration > 0,
-      "video duration decoded",
-    );
+    const video = document.querySelector("video");
+    if (video) {
+      assert(video.duration > 0, "video duration decoded");
+    } else {
+      assert(window.__untabSmokePlatform === "linux" &&
+        [...document.querySelectorAll(".details-actions button")].some(button => button.textContent.includes("Abrir arquivo")),
+        "Linux WebKit media fallback offers the system player");
+    }
     document.querySelector('[aria-label="Fechar detalhes"]').click();
     await invoke("delete_bookmark", { id: pdfItem.id });
     await invoke("restore_bookmark", { id: pdfItem.id });

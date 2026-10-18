@@ -56,7 +56,7 @@ npm run desktop
 
 ## Small by design
 
-Untab saves bookmarks; it doesn't archive entire websites or download a video from its URL. Files are limited to 2 GB each, and executables, installers and scripts are rejected. PDF/video thumbnails are currently available on macOS; other platforms use file cards. Media playback depends on the OS codecs.
+Untab saves bookmarks; it doesn't archive entire websites or download a video from its URL. Files are limited to 2 GB each, and executables, installers and scripts are rejected. PDF/video thumbnails are currently available on macOS; other platforms use file cards. Media playback depends on the OS codecs. Linux WebKitGTK may require opening local audio/video in your system player.
 
 Saving and searching work offline. Website previews contact the saved website; update checks contact GitHub. There is no analytics or cloud sync. [Storage and privacy](docs/usage.md#storage-and-privacy).
 

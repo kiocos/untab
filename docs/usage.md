@@ -48,3 +48,5 @@ There is no account, telemetry or cloud synchronization. Website preview request
 - Filenames must be portable across supported systems
 - PDF/video thumbnails use macOS Quick Look; other platforms show a file card
 - Image/video/audio support depends on installed codecs; **Abrir arquivo** uses an external app when needed
+
+Linux WebKitGTK has an [upstream limitation with local media URLs](https://github.com/tauri-apps/tauri/issues/3725). When playback fails, **Abrir arquivo** opens the saved original in your system player. Saving, organizing and exporting those files still work.

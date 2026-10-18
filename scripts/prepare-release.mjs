@@ -20,6 +20,7 @@ for (const name of [windows, linux, one(/\.dmg$/), one(/\.deb$/)]) {
 function entry(name) {
   const signature = readFileSync(join(dir, `${name}.sig`), "utf8").trim();
   assert(signature.length > 80, `Missing signature: ${name}`);
+  assert(Buffer.from(signature, "base64").toString("utf8").split("\n").some(line => line.startsWith("trusted comment:") && line.split("\t").includes(`version:${version}`)), `Wrong signed version: ${name}`);
   return { url: `https://github.com/kiocos/untab/releases/download/v${version}/${encodeURIComponent(name)}`, signature };
 }
 const notes = readFileSync("CHANGELOG.md", "utf8").split(/^## /m)[1]?.replace(/^.*\n/, "").trim();

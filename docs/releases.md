@@ -9,7 +9,7 @@ The project uses SemVer and Conventional Commits. Versions before `0.4.0` were p
 - Keep only the updater public key in `src-tauri/tauri.conf.json`
 - Configure the maintainer's PGP key for signed commits and tags
 
-The updater key is separate from PGP and OS certificates. Losing it prevents trusted updates to existing installations. Never replace it during an ordinary version bump. No Apple notarization or Windows Authenticode credentials are configured for the first release.
+The updater verifies both the artifact signature and its signed version (`requireSignedVersion`). `tauri build` embeds that version automatically. The updater key is separate from PGP and OS certificates. Losing it prevents trusted updates to existing installations. Never replace it during an ordinary version bump. No Apple notarization or Windows Authenticode credentials are configured for the first release.
 
 ## Each release
 
